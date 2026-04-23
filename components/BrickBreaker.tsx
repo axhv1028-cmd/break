@@ -27,6 +27,19 @@ const BrickBreaker = forwardRef<BrickBreakerHandle, GameProps>(({ userName, onGa
   const isDragging = useRef(false);
   const [isPaused, setIsPaused] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(3);
+  
+  // Refs for event listeners to read latest state without re-binding
+  const isPausedRef = useRef(isPaused);
+  const countdownRef = useRef(countdown);
+  
+  useEffect(() => {
+    isPausedRef.current = isPaused;
+  }, [isPaused]);
+  
+  useEffect(() => {
+    countdownRef.current = countdown;
+  }, [countdown]);
+
   const requestRef = useRef<number>(0);
 
   // Brick settings
@@ -133,31 +146,40 @@ const BrickBreaker = forwardRef<BrickBreakerHandle, GameProps>(({ userName, onGa
     // Pointer capture states
 
     const handlePointerMove = (e: PointerEvent) => {
-      if (!isDragging.current || !canvasRef.current || isPausedRef.current || countdownRef.current !== null) return;
-      updatePaddlePosition(e);
+      // Allow moving unconditionally for touch, for mouse require drag
+      if ((e.pointerType === 'mouse' && !isDragging.current) || isPausedRef.current || countdownRef.current !== null) return;
+      updatePaddlePositionWithX(e.clientX);
     };
 
     const handlePointerUp = (e: PointerEvent) => {
       isDragging.current = false;
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
-      window.removeEventListener("pointercancel", handlePointerUp);
     };
 
     const handlePointerDown = (e: PointerEvent) => {
-      if (!canvasRef.current || isPausedRef.current || countdownRef.current !== null) return;
+      if (isPausedRef.current || countdownRef.current !== null) return;
+      // Ignore clicks on buttons/inputs
+      const target = e.target as HTMLElement;
+      if (target.tagName.toLowerCase() === 'button' || target.tagName.toLowerCase() === 'input') return;
+      
       isDragging.current = true;
-      updatePaddlePosition(e);
-      window.addEventListener("pointermove", handlePointerMove);
-      window.addEventListener("pointerup", handlePointerUp);
-      window.addEventListener("pointercancel", handlePointerUp);
+      updatePaddlePositionWithX(e.clientX);
     };
 
-    const updatePaddlePosition = (e: PointerEvent) => {
+    const handleTouch = (e: TouchEvent) => {
+      if (isPausedRef.current || countdownRef.current !== null) return;
+      const target = e.target as HTMLElement;
+      if (target.tagName.toLowerCase() === 'button' || target.tagName.toLowerCase() === 'input') return;
+      
+      // Stop ALL native scrolling and zooming when touching the game
+      e.preventDefault(); 
+      updatePaddlePositionWithX(e.touches[0].clientX);
+    };
+
+    const updatePaddlePositionWithX = (clientX: number) => {
       if (!canvasRef.current) return;
       const rect = canvasRef.current.getBoundingClientRect();
       const scaleX = 800 / rect.width;
-      const pointerX = (e.clientX - rect.left) * scaleX;
+      const pointerX = (clientX - rect.left) * scaleX;
       
       let newX = pointerX - paddleWidth / 2;
       if (newX < 0) newX = 0;
@@ -165,16 +187,14 @@ const BrickBreaker = forwardRef<BrickBreakerHandle, GameProps>(({ userName, onGa
       paddleX.current = newX;
     };
 
-    // Need refs for state values to use in listeners without re-adding them
-    const isPausedRef = { current: isPaused };
-    const countdownRef = { current: countdown };
-
     document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("keyup", handleKeyUp);
-    const canvas = canvasRef.current;
-    if (canvas) {
-      canvas.addEventListener("pointerdown", handlePointerDown);
-    }
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+    window.addEventListener("touchstart", handleTouch, { passive: false });
+    window.addEventListener("touchmove", handleTouch, { passive: false });
 
     // Audio init
     audioRef.current = new Audio("/Hyper_Speed_Run.mp3");
@@ -184,12 +204,12 @@ const BrickBreaker = forwardRef<BrickBreakerHandle, GameProps>(({ userName, onGa
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("keyup", handleKeyUp);
-      if (canvas) {
-        canvas.removeEventListener("pointerdown", handlePointerDown);
-      }
+      window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerUp);
+      window.removeEventListener("touchstart", handleTouch);
+      window.removeEventListener("touchmove", handleTouch);
       audioRef.current?.pause();
       audioCtxRef.current?.close();
     };
@@ -345,12 +365,12 @@ const BrickBreaker = forwardRef<BrickBreakerHandle, GameProps>(({ userName, onGa
             </div>
           </div>
         </div>
-        <div className="flex gap-2 items-center">
-          <button onClick={() => setIsPaused(!isPaused)} className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
+        <div className="flex gap-2 sm:gap-3 items-center">
+          <button onClick={() => setIsPaused(!isPaused)} className="p-3 sm:p-2 bg-white/10 rounded-xl hover:bg-white/20 transition-colors text-xl sm:text-base">
             {isPaused ? "▶️" : "⏸️"}
           </button>
-          <button onClick={onRestart} className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors">🔄</button>
-          <button onClick={() => onGameOver(false)} className="p-2 bg-red-500/20 rounded-lg hover:bg-red-500/40 transition-colors">🛑</button>
+          <button onClick={onRestart} className="p-3 sm:p-2 bg-white/10 rounded-xl hover:bg-white/20 transition-colors text-xl sm:text-base">🔄</button>
+          <button onClick={() => onGameOver(false)} className="p-3 sm:p-2 bg-red-500/20 rounded-xl hover:bg-red-500/40 transition-colors text-xl sm:text-base">🛑</button>
         </div>
       </div>
       <canvas 

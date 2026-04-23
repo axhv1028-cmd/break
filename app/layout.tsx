@@ -17,6 +17,13 @@ export const metadata: Metadata = {
   description: "인천대학교 횃불이 벽돌깨기 게임",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

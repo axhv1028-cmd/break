@@ -17,7 +17,7 @@ export default function Home() {
   const [isSaving, setIsSaving] = useState(false);
 
   // 구글 앱스 스크립트 웹 앱 URL을 여기에 입력하세요.
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx2R5ms8DjPn5YrUw5Nk-za-MO4A-YjmTs_3a0YSW5QN5fqSqcwObldpTZCEJ8-mBfUmQ/exec"; 
+  const SCRIPT_URL = process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || ""; 
 
   const fetchRankings = async () => {
     if (!SCRIPT_URL) return;
@@ -121,7 +121,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-gradient-mesh flex flex-col items-center justify-center p-2 sm:p-4 overflow-hidden">
+    <main className="min-h-screen bg-gradient-mesh flex flex-col items-center justify-center p-2 sm:p-4 overflow-hidden touch-none select-none">
       <AnimatePresence mode="wait">
         {gameState === "start" && (
           <motion.div
